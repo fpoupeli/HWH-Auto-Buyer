@@ -7,8 +7,10 @@
 // @match        https://www.hero-wars.com/*
 // @match        https://apps-1701433570146040.apps.fbsbx.com/*
 // @run-at       document-start
+// @downloadURL https://update.greasyfork.org/scripts/550128/HWH%20Auto-Buyer.user.js
+// @updateURL https://update.greasyfork.org/scripts/550128/HWH%20Auto-Buyer.meta.js
 // ==/UserScript==
- 
+
 (function () {
     if (!this.HWHClasses || !this.HWHFuncs || !this.Caller) {
         console.log('%cHWH dependencies not found for Auto-Buyer extension', 'color: red');
@@ -18,7 +20,7 @@
     const { HWHClasses, HWHFuncs, HWHData, cheats, Caller } = this;
     const { addExtentionName, getSaveVal, setSaveVal, setProgress } = HWHFuncs;
     addExtentionName(GM_info.script.name, GM_info.script.version, GM_info.script.author);
- 
+
     const settings = {
         coin1: { input: null, default: true },
         coin2: { input: null, default: true },
@@ -28,10 +30,11 @@
         coin6: { input: null, default: true },
         maxGear: { input: null, default: 3 },
         maxFragment: { input: null, default: 80 },
+        maxFragmentRed: { input: null, default: 200 },
         minCoins: { input: null, default: 100000 },
         chaosPetShop: { input: null, default: false }, // << NEW SETTING
     };
- 
+
     const COINS = [
         { id: '1', name: 'Arena Coin', setting: 'coin1' },
         { id: '2', name: 'Grand Arena Coin', setting: 'coin2' },
@@ -41,7 +44,7 @@
         { id: '6', name: 'Friendship Coin', setting: 'coin6' },
         // Pet Soul Coin is not in default shops, handled manually for shopId 17
     ];
- 
+
     const ALLOWED_COIN_IDS = COINS.map(coin => coin.id);
     const ALLOWED_REWARD_TYPES = ['gear', 'fragmentGear', 'fragmentScroll'];
     const SHOP_NAMES = {
@@ -49,7 +52,7 @@
         6: 'Tower Shop', 8: 'Soul Shop', 9: 'Friendship Shop', 10: 'Outland Shop',
         17: 'Pet Soul Stone Shop',
     };
- 
+
     function getItemName(rewardType, rewardData) {
         try {
             const itemId = Object.keys(rewardData)[0];
@@ -64,12 +67,13 @@
             return `${rewardType} ID`;
         }
     }
- 
+
     async function autoBuyFromShops() {
         console.log('=== AUTO-BUYER START ===');
         setProgress('Starting Auto-Buyer...');
         const maxGear = parseInt(settings.maxGear.input.value) || settings.maxGear.default;
         const maxFragment = parseInt(settings.maxFragment.input.value) || settings.maxFragment.default;
+        const maxFragmentRed = parseInt(settings.maxFragmentRed.input.value) || settings.maxFragmentRed.default;
         const minCoins = parseInt(settings.minCoins.input.value) || settings.minCoins.default;
         const enabledCoins = {};
         COINS.forEach(coin => {
@@ -80,13 +84,13 @@
         const currencyTracker = { ...inventory.coin, gold: userInfo.gold, ...inventory.petcoin }; // include petcoin if structure matches
         const callsToMake = [];
         const itemsToLog = [];
- 
+
         for (const shopId in shops) {
             const idNum = parseInt(shopId);
             const currentShop = shops[shopId];
             if (!currentShop.slots) continue;
- 
- 
+
+
 // Handle Pet Soul Stone Shop (17) for chaos particles via Pet Soul Coins, NO cost/balance checks
 if (idNum === 17) {
     console.log("something in pet shop");
@@ -113,8 +117,8 @@ if (idNum === 17) {
     itemsToLog.push(`• ${getItemName(rewardType, rewardData)} (x${amount}) from Pet Soul Stone Shop (Chaos Particles)`);
     continue;
 }
- 
- 
+
+
             // Normal logic for other shops (original logic, but skip shopId 17)
             if (idNum >= 11) continue;
             for (const slotId in currentShop.slots) {
@@ -131,7 +135,9 @@ if (idNum === 17) {
                 if (shouldBuy) {
                     const costAmount = slot.cost[Object.keys(slot.cost)[0]][Object.keys(slot.cost[Object.keys(slot.cost)[0]])[0]];
                     const playerBalance = currencyTracker[Object.keys(slot.cost[Object.keys(slot.cost)[0]])[0]] || 0;
-                    if (playerBalance < costAmount + minCoins) shouldBuy = false;
+                    if (playerBalance < costAmount + minCoins) {
+                        shouldBuy = false;
+                    }
                 }
                 if (shouldBuy) {
                     for (const [rewardType, rewardData] of Object.entries(slot.reward)) {
@@ -148,7 +154,16 @@ if (idNum === 17) {
                             shouldBuy = false;
                             break;
                         }
-                        if ((rewardType === 'fragmentGear' || rewardType === 'fragmentScroll') && inventoryCount >= maxFragment) {
+                        let maxFragmentToCheck = maxFragment;
+                        //5 mean red items
+                        let libType = rewardType.charAt(0).toUpperCase() + rewardType.slice(1);
+                        const libName = `LIB_${libType.toUpperCase()}_NAME_${itemId}`;
+                        const translated = cheats.translate(libName.replace("FRAGMENT",""));
+                        console.log("-------------", translated);
+                        if (5 == Object.values(rewardData)[0]) {
+                            maxFragmentToCheck = maxFragmentRed;
+                        }
+                        if ((rewardType === 'fragmentGear' || rewardType === 'fragmentScroll') && inventoryCount >= maxFragmentToCheck) {
                             shouldBuy = false;
                             break;
                         }
@@ -176,7 +191,7 @@ if (idNum === 17) {
                 }
             }
         }
- 
+
         if (callsToMake.length > 0) {
             console.log(`Attempting to buy ${callsToMake.length} items...`);
             setProgress(`Buying ${callsToMake.length} items...`);
@@ -203,7 +218,7 @@ if (idNum === 17) {
         }
         console.log('=== AUTO-BUYER END ===');
     }
- 
+
     function initializeExtension() {
         function addShopCheckerControls() {
             const { ScriptMenu } = HWHClasses;
@@ -218,6 +233,7 @@ if (idNum === 17) {
             });
             settings.maxGear.input = scriptMenu.addInputText('Max Gear/Scroll Count:', 'e.g., 3', details);
             settings.maxFragment.input = scriptMenu.addInputText('Max Fragment Count:', 'e.g., 80', details);
+            settings.maxFragmentRed.input = scriptMenu.addInputText('Max Fragment Red Count:', 'e.g., 200', details);
             settings.minCoins.input = scriptMenu.addInputText('Min Coin Reserve:', 'e.g., 100000', details);
             // Pet Chaos checkbox
             settings.chaosPetShop.input = scriptMenu.addCheckbox(
@@ -241,7 +257,7 @@ if (idNum === 17) {
                 }
             }
         }
- 
+
         addShopCheckerControls();
         const { buttons } = HWHData;
         buttons.autoBuyer = {
@@ -252,7 +268,7 @@ if (idNum === 17) {
         };
         console.log('%cAuto-Buyer extension loaded and attached to HWH menu.', 'color: green');
     }
- 
+
     const { ScriptMenu } = HWHClasses;
     const scriptMenu = ScriptMenu.getInst();
     if (scriptMenu && scriptMenu.mainMenu) {
