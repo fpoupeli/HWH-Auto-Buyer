@@ -190,7 +190,7 @@ if (idNum === 17) {
                     const costAmount = slot.cost[costType][costCurrencyId];
                     currencyTracker[costCurrencyId] -= costAmount;
                     if (inventory[rewardType] && inventory[rewardType][itemId]) {
-                        inventory[rewardType][itemId] -= amount;
+                        inventory[rewardType][itemId] += amount;
                     }
                 }
             }
