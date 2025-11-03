@@ -183,11 +183,15 @@ if (idNum === 17) {
                     const rewardType = Object.keys(slot.reward)[0];
                     const rewardData = slot.reward[rewardType];
                     const amount = Object.values(rewardData)[0];
+                    const itemId = Object.keys(rewardData)[0];
                     itemsToLog.push(`• ${getItemName(rewardType, rewardData)} (x${amount}) from ${SHOP_NAMES[shopId] || `Shop ${shopId}`}`);
                     const costType = Object.keys(slot.cost)[0];
                     const costCurrencyId = Object.keys(slot.cost[costType])[0];
                     const costAmount = slot.cost[costType][costCurrencyId];
                     currencyTracker[costCurrencyId] -= costAmount;
+                    if (inventory[rewardType] && inventory[rewardType][itemId]) {
+                        inventory[rewardType][itemId] -= amount;
+                    }
                 }
             }
         }
