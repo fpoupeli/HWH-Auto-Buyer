@@ -155,11 +155,7 @@ if (idNum === 17) {
                             break;
                         }
                         let maxFragmentToCheck = maxFragment;
-                        //5 mean red items
-                        let libType = rewardType.charAt(0).toUpperCase() + rewardType.slice(1);
-                        const libName = `LIB_${libType.toUpperCase()}_NAME_${itemId}`;
-                        const translated = cheats.translate(libName.replace("FRAGMENT",""));
-                        console.log("-------------", translated);
+                        //5 means red articles necessarily
                         if (5 == Object.values(rewardData)[0]) {
                             maxFragmentToCheck = maxFragmentRed;
                         }
